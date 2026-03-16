@@ -2,6 +2,8 @@ package u03
 
 import u03.Optionals.Optional
 
+import scala.annotation.tailrec
+
 object Sequences: // Essentially, generic linkedlists
   
   enum Sequence[E]:
@@ -32,6 +34,7 @@ object Sequences: // Essentially, generic linkedlists
      * E.g., [10, 20, 30], 0 => [10, 20, 30]
      * E.g., [], 2 => []
      */
+    @annotation.tailrec
     def skip[A](s: Sequence[A])(n: Int): Sequence[A] = (s, n) match
       case (s, 0) => s
       case (Cons(_, t), n) => skip(t)(n - 1)
@@ -46,6 +49,12 @@ object Sequences: // Essentially, generic linkedlists
     def zip[A, B](first: Sequence[A], second: Sequence[B]): Sequence[(A, B)] = (first, second) match
       case (Cons(hf, tf), Cons(hs, ts)) => Cons((hf, hs), zip(tf, ts))
       case _ => Nil()
+
+    @annotation.tailrec
+    def zipTail[A, B](first: Sequence[A], second: Sequence[B], acc: Sequence[(A, B)]): Sequence[(A, B)] = (first, second, acc) match
+      case (Nil(), _, acc) => acc
+      case (_, Nil(), acc) => acc
+      case (Cons(hf, tf), Cons(hs, ts), acc) => zipTail(tf, ts, concat(acc, Cons((hf, hs), Nil())))
 
     /*
      * Concatenate two sequences
@@ -65,7 +74,6 @@ object Sequences: // Essentially, generic linkedlists
      */
     def reverse[A](s: Sequence[A]): Sequence[A] = s match
       case Nil() => Nil()
-      case Cons(h, Nil()) => Cons(h, Nil())
       case Cons(h, t) => concat(reverse(t), Cons(h, Nil()))
 
     /*
@@ -74,14 +82,28 @@ object Sequences: // Essentially, generic linkedlists
      * E.g., [10, 20, 30], calling with mapper(v => [v]) returns [10, 20, 30]
      * E.g., [10, 20, 30], calling with mapper(v => Nil()) returns []
      */
-    def flatMap[A, B](s: Sequence[A])(mapper: A => Sequence[B]): Sequence[B] = ???
+    def flatMap[A, B](s: Sequence[A])(mapper: A => Sequence[B]): Sequence[B] = (s, mapper) match
+      case (Cons(h, t), m) => concat(m(h), flatMap(t)(m))
+      case _ => Nil()
 
     /*
      * Get the minimum element in the sequence
      * E.g., [30, 20, 10] => 10
      * E.g., [10, 1, 30] => 1
      */
-    def min(s: Sequence[Int]): Optional[Int] = ???
+    def min(s: Sequence[Int]): Optional[Int] = s match
+      case Cons(h, t) if Optional.orElse(min(t), h) >= h => Optional.Just(h)
+      case Cons(h, t) => min(t)
+      case _ => Optional.Empty()
+
+    @annotation.tailrec
+    def minTail(s: Sequence[Int], min: Optional[Int]): Optional[Int] = (s, min) match
+      case (Cons(h, Nil()), Optional.Just(n)) if h < n => Optional.Just(h)
+      case (Cons(h, Nil()), Optional.Just(n)) if n <= h => Optional.Just(n)
+      case (Cons(h, t), Optional.Just(n)) if h < n => minTail(t, Optional.Just(h))
+      case (Cons(h, t), Optional.Just(n)) if n <= h => minTail(t, Optional.Just(n))
+      case (Cons(h, t), Optional.Empty()) => minTail(t, Optional.Just(h))
+      case (_, n) => n
 
     /*
      * Get the elements at even indices
