@@ -110,21 +110,35 @@ object Sequences: // Essentially, generic linkedlists
      * E.g., [10, 20, 30] => [10, 30]
      * E.g., [10, 20, 30, 40] => [10, 30]
      */
-    def evenIndices[A](s: Sequence[A]): Sequence[A] = ???
+    def evenIndices[A](s: Sequence[A]): Sequence[A] = s match
+      case Cons(h, t) => Cons(h, evenIndices(skip(t)(1)))
+      case _ => Nil()
 
     /*
      * Check if the sequence contains the element
      * E.g., [10, 20, 30] => true if elem is 20
      * E.g., [10, 20, 30] => false if elem is 40
      */
-    def contains[A](s: Sequence[A])(elem: A): Boolean = ???
+    @annotation.tailrec
+    def contains[A](s: Sequence[A])(elem: A): Boolean = (s, elem) match
+      case (Cons(h, _), e) if h == e => true
+      case (Cons(_, t), e) => contains(t)(e)
+      case _ => false
 
     /*
      * Remove duplicates from the sequence
      * E.g., [10, 20, 10, 30] => [10, 20, 30]
      * E.g., [10, 20, 30] => [10, 20, 30]
      */
-    def distinct[A](s: Sequence[A]): Sequence[A] = ???
+    def distinct[A](s: Sequence[A]): Sequence[A] =
+      @annotation.tailrec
+      def distinctTail(s: Sequence[A], found: Sequence[A]): Sequence[A] = (s, found) match
+        case (Cons(h, t), Nil()) => distinctTail(t, Cons(h, Nil()))
+        case (Cons(h, t), f) if !contains(f)(h) => distinctTail(t, concat(f, Cons(h, Nil())))
+        case (Cons(h, t), f) => distinctTail(t, f)
+        case (_, f) => f
+
+      distinctTail(s, Nil())
 
     /*
      * Group contiguous elements in the sequence
@@ -132,14 +146,25 @@ object Sequences: // Essentially, generic linkedlists
      * E.g., [10, 20, 30] => [[10], [20], [30]]
      * E.g., [10, 20, 20, 30] => [[10], [20, 20], [30]]
      */
-    def group[A](s: Sequence[A]): Sequence[Sequence[A]] = ???
+    def group[A](s: Sequence[A]): Sequence[Sequence[A]] =
+      @annotation.tailrec
+      def groupBy(s: Sequence[A], groups: Sequence[A], acc: Sequence[Sequence[A]]): Sequence[Sequence[A]] =
+        (s, groups, acc) match
+          case (Cons(h, t), Cons(gH, gT), Cons(aH, aT)) if h == gH => groupBy(t, Cons(gH, gT), Cons(Cons(h, aH), aT))
+          case (Cons(h, t), Cons(gH, gT), Cons(aH, aT)) => groupBy(t, gT, Cons(Cons(h, Nil()), Cons(aH, aT)))
+          case (Cons(h, t), Cons(gH, gT), Nil()) if h == gH => groupBy(t, Cons(gH, gT), Cons(Cons(h, Nil()), Nil()))
+          case (Cons(h, t), Cons(gH, gT), Nil()) => groupBy(t, gT, Nil())
+          case (_, _, acc) => acc
+
+      reverse(groupBy(s, distinct(s), Nil()))
 
     /*
      * Partition the sequence into two sequences based on the predicate
      * E.g., [10, 20, 30] => ([10], [20, 30]) if pred is (_ < 20)
      * E.g., [11, 20, 31] => ([20], [11, 31]) if pred is (_ % 2 == 0)
      */
-    def partition[A](s: Sequence[A])(pred: A => Boolean): (Sequence[A], Sequence[A]) = ???
+    def partition[A](s: Sequence[A])(pred: A => Boolean): (Sequence[A], Sequence[A]) = s match
+      case s => (filter(s)(pred), filter(s)(!pred(_)))
 
 @main def trySequences =
   import Sequences.* 
