@@ -51,10 +51,9 @@ object Sequences: // Essentially, generic linkedlists
       case _ => Nil()
 
     @annotation.tailrec
-    def zipTail[A, B](first: Sequence[A], second: Sequence[B], acc: Sequence[(A, B)]): Sequence[(A, B)] = (first, second, acc) match
-      case (Nil(), _, acc) => acc
-      case (_, Nil(), acc) => acc
-      case (Cons(hf, tf), Cons(hs, ts), acc) => zipTail(tf, ts, concat(acc, Cons((hf, hs), Nil())))
+    def zipTail[A, B](first: Sequence[A], second: Sequence[B], acc: Sequence[(A, B)]): Sequence[(A, B)] = (first, second) match
+      case (Cons(hf, tf), Cons(hs, ts)) => zipTail(tf, ts, concat(acc, Cons((hf, hs), Nil())))
+      case (_, _) => acc
 
     /*
      * Concatenate two sequences
@@ -73,8 +72,8 @@ object Sequences: // Essentially, generic linkedlists
      * E.g., [] => []
      */
     def reverse[A](s: Sequence[A]): Sequence[A] = s match
-      case Nil() => Nil()
       case Cons(h, t) => concat(reverse(t), Cons(h, Nil()))
+      case _ => Nil()
 
     /*
      * Map the elements of the sequence to a new sequence and flatten the result
@@ -82,8 +81,8 @@ object Sequences: // Essentially, generic linkedlists
      * E.g., [10, 20, 30], calling with mapper(v => [v]) returns [10, 20, 30]
      * E.g., [10, 20, 30], calling with mapper(v => Nil()) returns []
      */
-    def flatMap[A, B](s: Sequence[A])(mapper: A => Sequence[B]): Sequence[B] = (s, mapper) match
-      case (Cons(h, t), m) => concat(m(h), flatMap(t)(m))
+    def flatMap[A, B](s: Sequence[A])(mapper: A => Sequence[B]): Sequence[B] = s match
+      case Cons(h, t) => concat(mapper(h), flatMap(t)(mapper))
       case _ => Nil()
 
     /*
@@ -91,19 +90,11 @@ object Sequences: // Essentially, generic linkedlists
      * E.g., [30, 20, 10] => 10
      * E.g., [10, 1, 30] => 1
      */
-    def min(s: Sequence[Int]): Optional[Int] = s match
-      case Cons(h, t) if Optional.orElse(min(t), h) >= h => Optional.Just(h)
-      case Cons(h, t) => min(t)
-      case _ => Optional.Empty()
-
     @annotation.tailrec
-    def minTail(s: Sequence[Int], min: Optional[Int]): Optional[Int] = (s, min) match
-      case (Cons(h, Nil()), Optional.Just(n)) if h < n => Optional.Just(h)
-      case (Cons(h, Nil()), Optional.Just(n)) if n <= h => Optional.Just(n)
-      case (Cons(h, t), Optional.Just(n)) if h < n => minTail(t, Optional.Just(h))
-      case (Cons(h, t), Optional.Just(n)) if n <= h => minTail(t, Optional.Just(n))
-      case (Cons(h, t), Optional.Empty()) => minTail(t, Optional.Just(h))
-      case (_, n) => n
+    def min(s: Sequence[Int]): Optional[Int] = s match
+      case Cons(h1, Cons(h2, t)) => min(Cons(if h1 < h2 then h1 else h2, t))
+      case Cons(h1, Nil()) => Optional.Just(h1)
+      case _ => Optional.Empty()
 
     /*
      * Get the elements at even indices
@@ -130,15 +121,14 @@ object Sequences: // Essentially, generic linkedlists
      * E.g., [10, 20, 10, 30] => [10, 20, 30]
      * E.g., [10, 20, 30] => [10, 20, 30]
      */
-    def distinct[A](s: Sequence[A]): Sequence[A] =
-      @annotation.tailrec
-      def distinctTail(s: Sequence[A], found: Sequence[A]): Sequence[A] = (s, found) match
-        case (Cons(h, t), Nil()) => distinctTail(t, Cons(h, Nil()))
-        case (Cons(h, t), f) if !contains(f)(h) => distinctTail(t, concat(f, Cons(h, Nil())))
-        case (Cons(h, t), f) => distinctTail(t, f)
-        case (_, f) => f
+    def distinct[A](s: Sequence[A]): Sequence[A] = s match
+      case Cons(h, t) => Cons(h, filter(s)(_ != h))
+      case _ => Nil()
 
-      distinctTail(s, Nil())
+    @annotation.tailrec
+    def distinctTail[A](s: Sequence[A], found: Sequence[A]): Sequence[A] = s match
+      case Cons(h, t) => distinctTail(t, if !contains(found)(h) then concat(found, Cons(h, Nil())) else found)
+      case _ => found
 
     /*
      * Group contiguous elements in the sequence
@@ -146,17 +136,13 @@ object Sequences: // Essentially, generic linkedlists
      * E.g., [10, 20, 30] => [[10], [20], [30]]
      * E.g., [10, 20, 20, 30] => [[10], [20, 20], [30]]
      */
-    def group[A](s: Sequence[A]): Sequence[Sequence[A]] =
-      @annotation.tailrec
-      def groupBy(s: Sequence[A], groups: Sequence[A], acc: Sequence[Sequence[A]]): Sequence[Sequence[A]] =
-        (s, groups, acc) match
-          case (Cons(h, t), Cons(gH, gT), Cons(aH, aT)) if h == gH => groupBy(t, Cons(gH, gT), Cons(Cons(h, aH), aT))
-          case (Cons(h, t), Cons(gH, gT), Cons(aH, aT)) => groupBy(t, gT, Cons(Cons(h, Nil()), Cons(aH, aT)))
-          case (Cons(h, t), Cons(gH, gT), Nil()) if h == gH => groupBy(t, Cons(gH, gT), Cons(Cons(h, Nil()), Nil()))
-          case (Cons(h, t), Cons(gH, gT), Nil()) => groupBy(t, gT, Nil())
-          case (_, _, acc) => acc
+    def group[A](s: Sequence[A]): Sequence[Sequence[A]] = s match
+      case Cons(h, t) => Cons(Cons(h, filterUntil(t)(_ != h)), group(filter(t)(_ != h)))
+      case _ => Nil()
 
-      reverse(groupBy(s, distinct(s), Nil()))
+    def filterUntil[A](s: Sequence[A])(pred: A => Boolean): Sequence[A] = s match
+      case Cons(h, t) if !pred(h) => Cons(h, filterUntil(t)(pred))
+      case _ => Nil()
 
     /*
      * Partition the sequence into two sequences based on the predicate

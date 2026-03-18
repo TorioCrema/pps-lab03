@@ -67,10 +67,13 @@ class SequenceTest:
     assertEquals(Cons(10, Cons(20, Nil())), distinct(Cons(10, Cons(20, Cons(10, Nil())))))
     assertEquals(Nil(), distinct(Nil()))
 
+  @Test def testFilterUntil(): Unit =
+    assertEquals(Cons(10, Cons(10, Nil())), filterUntil(Cons(10, Cons(10, Cons(20, Cons(10, Nil())))))(_ != 10))
+
   @Test def testGroup() =
     val sequence = Cons(10, Cons(10, Cons(20, Cons(30, Cons(20, Nil())))))
     val grouped =
-      Cons(Cons(10, Cons(10, Nil())), Cons(Cons(20, Nil()), Cons(Cons(30, Nil()), Cons(Cons(20, Nil()), Nil()))))
+      Cons(Cons(10, Cons(10, Nil())), Cons(Cons(20, Nil()), Cons(Cons(30, Nil()), Nil())))
     assertEquals(grouped, group(sequence))
     assertEquals(Nil(), group(Nil()))
 
