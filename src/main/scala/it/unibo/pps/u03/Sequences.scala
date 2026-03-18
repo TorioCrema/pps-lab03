@@ -166,6 +166,11 @@ object Sequences: // Essentially, generic linkedlists
     def partition[A](s: Sequence[A])(pred: A => Boolean): (Sequence[A], Sequence[A]) = s match
       case s => (filter(s)(pred), filter(s)(!pred(_)))
 
+    @annotation.tailrec
+    def foldLeft[A, B](s: Sequence[A])(default: B)(acc: (B, A) => B): B = s match
+      case Cons(h, t) => foldLeft(t)(acc(default, h))(acc)
+      case _ => default
+
 @main def trySequences =
   import Sequences.* 
   val l = Sequence.Cons(10, Sequence.Cons(20, Sequence.Cons(30, Sequence.Nil())))
