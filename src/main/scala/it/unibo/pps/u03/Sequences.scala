@@ -137,12 +137,16 @@ object Sequences: // Essentially, generic linkedlists
      * E.g., [10, 20, 20, 30] => [[10], [20, 20], [30]]
      */
     def group[A](s: Sequence[A]): Sequence[Sequence[A]] = s match
-      case Cons(h, t) => Cons(Cons(h, filterUntil(t)(_ != h)), group(filter(t)(_ != h)))
+      case Cons(h, t) => Cons(Cons(h, filterUntil(t)(_ != h)), group(filterAsLongAs(t)(_ == h)))
       case _ => Nil()
 
     def filterUntil[A](s: Sequence[A])(pred: A => Boolean): Sequence[A] = s match
       case Cons(h, t) if !pred(h) => Cons(h, filterUntil(t)(pred))
       case _ => Nil()
+
+    def filterAsLongAs[A](s: Sequence[A])(pred: A => Boolean): Sequence[A] = s match
+      case Cons(h, t) if pred(h) => filterAsLongAs(t)(pred)
+      case _ => s
 
     /*
      * Partition the sequence into two sequences based on the predicate
